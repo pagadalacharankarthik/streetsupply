@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,165 +19,183 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Orders = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const orders = [
-    {
-      id: "ORD-001",
-      items: [
-        { name: "Basmati Rice", quantity: "25kg", price: "₹1,250" }
-      ],
-      supplier: "Krishna Traders",
-      status: "Delivered",
-      orderDate: "2024-01-15",
-      deliveryDate: "2024-01-16",
-      total: "₹1,250",
-      tracking: "DEL123456789",
-      rating: 5
-    },
-    {
-      id: "ORD-002",
-      items: [
-        { name: "Cooking Oil", quantity: "5L", price: "₹450" },
-        { name: "Mustard Oil", quantity: "2L", price: "₹200" }
-      ],
-      supplier: "Sharma Suppliers",
-      status: "In Transit",
-      orderDate: "2024-01-18",
-      deliveryDate: "2024-01-19",
-      total: "₹650",
-      tracking: "TRN987654321",
-      rating: null
-    },
-    {
-      id: "ORD-003",
-      items: [
-        { name: "Red Onions", quantity: "10kg", price: "₹300" }
-      ],
-      supplier: "Fresh Produce Co.",
-      status: "Processing",
-      orderDate: "2024-01-20",
-      deliveryDate: "2024-01-21",
-      total: "₹300",
-      tracking: "PROC456789123",
-      rating: null
-    },
-    {
-      id: "ORD-004",
-      items: [
-        { name: "Turmeric Powder", quantity: "1kg", price: "₹180" },
-        { name: "Red Chilli Powder", quantity: "1kg", price: "₹120" }
-      ],
-      supplier: "Spice Masters",
-      status: "Cancelled",
-      orderDate: "2024-01-12",
-      deliveryDate: null,
-      total: "₹300",
-      tracking: null,
-      rating: null
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
     }
-  ];
+  }, [user]);
+
+  const fetchOrders = async () => {
+    if (!user) return;
+
+    try {
+      const userRole = user.user_metadata?.role || 'vendor';
+      
+      let query;
+      if (userRole === 'supplier') {
+        // For suppliers, get orders for their products
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (supplierData) {
+          query = supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items (
+                *,
+                products (name, unit, price_per_unit)
+              )
+            `)
+            .eq('supplier_id', supplierData.id);
+        }
+      } else {
+        // For vendors, get their orders
+        query = supabase
+          .from('orders')
+          .select(`
+            *,
+            suppliers (business_name),
+            order_items (
+              *,
+              products (name, unit, price_per_unit)
+            )
+          `)
+          .eq('vendor_id', user.id);
+      }
+
+      if (query) {
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        setOrders(data || []);
+      }
+    } catch (error: any) {
+      console.error('Error fetching orders:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Delivered': return <CheckCircle className="h-4 w-4" />;
-      case 'In Transit': return <Truck className="h-4 w-4" />;
-      case 'Processing': return <Clock className="h-4 w-4" />;
+    switch (status.toLowerCase()) {
+      case 'delivered': return <CheckCircle className="h-4 w-4" />;
+      case 'in_transit': return <Truck className="h-4 w-4" />;
+      case 'processing': return <Clock className="h-4 w-4" />;
       default: return <Package className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered': return 'bg-green-100 text-green-800';
-      case 'In Transit': return 'bg-blue-100 text-blue-800';
-      case 'Processing': return 'bg-yellow-100 text-yellow-800';
-      case 'Cancelled': return 'bg-red-100 text-red-800';
+    switch (status.toLowerCase()) {
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'in_transit': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const filteredOrders = orders.filter(order => 
-    order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.suppliers?.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.order_items?.some((item: any) => 
+      item.products?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
-  const OrderCard = ({ order }: { order: typeof orders[0] }) => (
-    <Card className="mb-4">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="font-semibold text-lg">{order.id}</h3>
-            <p className="text-gray-600">{order.supplier}</p>
+  const OrderCard = ({ order }: { order: any }) => {
+    const userRole = user?.user_metadata?.role || 'vendor';
+    const displayStatus = order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ');
+    
+    return (
+      <Card className="mb-4">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-lg">{order.order_number}</h3>
+              <p className="text-gray-600">
+                {userRole === 'supplier' ? 'Customer Order' : order.suppliers?.business_name || 'Unknown Supplier'}
+              </p>
+            </div>
+            <Badge className={`flex items-center gap-1 ${getStatusColor(order.status)}`}>
+              {getStatusIcon(order.status)}
+              {displayStatus}
+            </Badge>
           </div>
-          <Badge className={`flex items-center gap-1 ${getStatusColor(order.status)}`}>
-            {getStatusIcon(order.status)}
-            {order.status}
-          </Badge>
-        </div>
 
-        <div className="space-y-2 mb-4">
-          {order.items.map((item, index) => (
-            <div key={index} className="flex justify-between items-center py-2 border-b last:border-b-0">
-              <div>
-                <span className="font-medium">{item.name}</span>
-                <span className="text-gray-600 ml-2">({item.quantity})</span>
+          <div className="space-y-2 mb-4">
+            {order.order_items?.map((item: any, index: number) => (
+              <div key={index} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                <div>
+                  <span className="font-medium">{item.products?.name || 'Unknown Product'}</span>
+                  <span className="text-gray-600 ml-2">({item.quantity} {item.products?.unit || 'units'})</span>
+                </div>
+                <span className="font-medium">₹{parseFloat(item.total_price).toLocaleString()}</span>
               </div>
-              <span className="font-medium">{item.price}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-          <div>
-            <span className="text-gray-600">Order Date:</span>
-            <div className="font-medium">{new Date(order.orderDate).toLocaleDateString()}</div>
+            )) || (
+              <div className="text-gray-600">No items found</div>
+            )}
           </div>
-          {order.deliveryDate && (
-            <div>
-              <span className="text-gray-600">Delivery Date:</span>
-              <div className="font-medium">{new Date(order.deliveryDate).toLocaleDateString()}</div>
-            </div>
-          )}
-          <div>
-            <span className="text-gray-600">Total Amount:</span>
-            <div className="font-medium text-lg">{order.total}</div>
-          </div>
-          {order.tracking && (
-            <div>
-              <span className="text-gray-600">Tracking ID:</span>
-              <div className="font-medium">{order.tracking}</div>
-            </div>
-          )}
-        </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
-          </Button>
-          {order.status !== 'Cancelled' && (
-            <>
-              <Button variant="outline" size="sm">
-                <Phone className="h-4 w-4 mr-2" />
-                Call Supplier
-              </Button>
-              <Button variant="outline" size="sm">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Chat
-              </Button>
-            </>
-          )}
-          {order.status === 'Delivered' && !order.rating && (
-            <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
-              Rate Order
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+            <div>
+              <span className="text-gray-600">Order Date:</span>
+              <div className="font-medium">{new Date(order.created_at).toLocaleDateString()}</div>
+            </div>
+            {order.delivery_date && (
+              <div>
+                <span className="text-gray-600">Delivery Date:</span>
+                <div className="font-medium">{new Date(order.delivery_date).toLocaleDateString()}</div>
+              </div>
+            )}
+            <div>
+              <span className="text-gray-600">Total Amount:</span>
+              <div className="font-medium text-lg">₹{parseFloat(order.total_amount).toLocaleString()}</div>
+            </div>
+            {order.tracking_id && (
+              <div>
+                <span className="text-gray-600">Tracking ID:</span>
+                <div className="font-medium">{order.tracking_id}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
             </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+            {order.status !== 'cancelled' && (
+              <>
+                <Button variant="outline" size="sm">
+                  <Phone className="h-4 w-4 mr-2" />
+                  Contact
+                </Button>
+                <Button variant="outline" size="sm">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Chat
+                </Button>
+              </>
+            )}
+            {order.status === 'delivered' && !order.rating && (
+              <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
+                Rate Order
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -232,7 +252,9 @@ const Orders = () => {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          {filteredOrders.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8">Loading orders...</div>
+          ) : filteredOrders.length > 0 ? (
             filteredOrders.map((order) => (
               <OrderCard key={order.id} order={order} />
             ))
@@ -251,13 +273,13 @@ const Orders = () => {
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
-          {filteredOrders.filter(o => ['Processing', 'In Transit'].includes(o.status)).map((order) => (
+          {filteredOrders.filter(o => ['processing', 'in_transit'].includes(o.status)).map((order) => (
             <OrderCard key={order.id} order={order} />
           ))}
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-4">
-          {filteredOrders.filter(o => o.status === 'Delivered').map((order) => (
+          {filteredOrders.filter(o => o.status === 'delivered').map((order) => (
             <OrderCard key={order.id} order={order} />
           ))}
         </TabsContent>
@@ -267,31 +289,35 @@ const Orders = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹2,200</div>
-            <p className="text-xs text-gray-600">Total spent</p>
+            <div className="text-2xl font-bold">
+              ₹{orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-600">All time</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4</div>
-            <p className="text-xs text-gray-600">This month</p>
+            <div className="text-2xl font-bold">{orders.length}</div>
+            <p className="text-xs text-gray-600">All time</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Savings</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">₹320</div>
-            <p className="text-xs text-gray-600">From group orders</p>
+            <div className="text-2xl font-bold text-green-600">
+              {orders.filter(o => o.status === 'delivered').length}
+            </div>
+            <p className="text-xs text-gray-600">Successfully delivered</p>
           </CardContent>
         </Card>
       </div>

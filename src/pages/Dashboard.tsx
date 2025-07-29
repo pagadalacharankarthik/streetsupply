@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,34 +16,105 @@ import {
   Plus,
   Store
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [supplierData, setSupplierData] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const userRole = user?.user_metadata?.role || 'vendor';
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    }
+  }, [user]);
+
+  const fetchUserData = async () => {
+    if (!user) return;
+
+    try {
+      if (userRole === 'supplier') {
+        // Fetch supplier data
+        const { data: supplier, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!supplierError) {
+          setSupplierData(supplier);
+        }
+      }
+
+      // Fetch orders (different based on role)
+      const ordersQuery = userRole === 'supplier' 
+        ? supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items (
+                *,
+                products (name, unit, price_per_unit)
+              )
+            `)
+            .eq('supplier_id', supplierData?.id || '')
+        : supabase
+            .from('orders')
+            .select(`
+              *,
+              suppliers (business_name),
+              order_items (
+                *,
+                products (name, unit, price_per_unit)
+              )
+            `)
+            .eq('vendor_id', user.id);
+
+      const { data: ordersData, error: ordersError } = await ordersQuery;
+
+      if (!ordersError) {
+        setOrders(ordersData || []);
+      }
+    } catch (error: any) {
+      toast.error('Error loading dashboard data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activeOrders = orders.filter(o => ['pending', 'processing', 'in_transit'].includes(o.status));
+  const completedOrders = orders.filter(o => o.status === 'delivered');
+  const totalSpent = orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+  const totalRevenue = userRole === 'supplier' ? totalSpent : 0;
+
   const vendorStats = [
-    { title: "Active Orders", value: "3", icon: ShoppingCart, color: "text-blue-600" },
-    { title: "Total Spent", value: "₹12,450", icon: TrendingUp, color: "text-green-600" },
-    { title: "Suppliers", value: "8", icon: Store, color: "text-orange-600" },
-    { title: "Group Orders", value: "2", icon: Users, color: "text-purple-600" }
+    { title: "Active Orders", value: activeOrders.length.toString(), icon: ShoppingCart, color: "text-blue-600" },
+    { title: "Total Spent", value: `₹${totalSpent.toLocaleString()}`, icon: TrendingUp, color: "text-green-600" },
+    { title: "Total Orders", value: orders.length.toString(), icon: Store, color: "text-orange-600" },
+    { title: "Completed", value: completedOrders.length.toString(), icon: Users, color: "text-purple-600" }
   ];
 
   const supplierStats = [
-    { title: "Active Products", value: "24", icon: Package, color: "text-blue-600" },
-    { title: "Total Revenue", value: "₹45,230", icon: TrendingUp, color: "text-green-600" },
-    { title: "Orders Today", value: "12", icon: ShoppingCart, color: "text-orange-600" },
-    { title: "Rating", value: "4.8", icon: Star, color: "text-yellow-600" }
+    { title: "Total Orders", value: orders.length.toString(), icon: Package, color: "text-blue-600" },
+    { title: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: "text-green-600" },
+    { title: "Active Orders", value: activeOrders.length.toString(), icon: ShoppingCart, color: "text-orange-600" },
+    { title: "Rating", value: supplierData?.rating?.toFixed(1) || "0.0", icon: Star, color: "text-yellow-600" }
   ];
 
   const stats = userRole === 'supplier' ? supplierStats : vendorStats;
 
-  const recentOrders = [
-    { id: "ORD-001", item: "Basmati Rice (25kg)", supplier: "Krishna Traders", status: "Delivered", amount: "₹1,250" },
-    { id: "ORD-002", item: "Cooking Oil (5L)", supplier: "Sharma Suppliers", status: "In Transit", amount: "₹450" },
-    { id: "ORD-003", item: "Onions (10kg)", supplier: "Fresh Produce Co.", status: "Processing", amount: "₹300" }
-  ];
+  const recentOrders = orders.slice(0, 3).map(order => ({
+    id: order.order_number,
+    item: order.order_items?.[0]?.products?.name || 'Multiple items',
+    supplier: userRole === 'supplier' ? 'Your order' : order.suppliers?.business_name || 'Unknown',
+    status: order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' '),
+    amount: `₹${parseFloat(order.total_amount).toLocaleString()}`
+  }));
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,13 +126,17 @@ const Dashboard = () => {
   };
 
   const quickActions = userRole === 'supplier' ? [
-    { title: "Add Product", icon: Plus, action: () => navigate('/add-product') },
+    { 
+      title: supplierData ? "Add Product" : "Setup Supplier Profile", 
+      icon: Plus, 
+      action: () => navigate(supplierData ? '/add-product' : '/supplier-setup') 
+    },
     { title: "View Orders", icon: ShoppingCart, action: () => navigate('/orders') },
-    { title: "Analytics", icon: TrendingUp, action: () => navigate('/analytics') }
+    { title: "Manage Products", icon: Package, action: () => navigate('/products') }
   ] : [
     { title: "Browse Suppliers", icon: Store, action: () => navigate('/suppliers') },
-    { title: "Join Group Order", icon: Users, action: () => navigate('/group-orders') },
-    { title: "Place Order", icon: Plus, action: () => navigate('/suppliers') }
+    { title: "My Orders", icon: ShoppingCart, action: () => navigate('/orders') },
+    { title: "Find Products", icon: Plus, action: () => navigate('/suppliers') }
   ];
 
   return (
@@ -123,7 +200,7 @@ const Dashboard = () => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
+      {/* Recent Orders */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -135,22 +212,34 @@ const Dashboard = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{order.item}</p>
-                    <p className="text-sm text-gray-600">{order.supplier}</p>
+            {loading ? (
+              <div className="text-center py-8">Loading orders...</div>
+            ) : recentOrders.length > 0 ? (
+              <div className="space-y-4">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{order.item}</p>
+                      <p className="text-sm text-gray-600">{order.supplier}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status}
+                      </Badge>
+                      <p className="text-sm font-medium mt-1">{order.amount}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status}
-                    </Badge>
-                    <p className="text-sm font-medium mt-1">{order.amount}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No orders yet</p>
+                <Button className="mt-4" onClick={() => navigate('/suppliers')}>
+                  {userRole === 'supplier' ? 'Wait for orders' : 'Browse Suppliers'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

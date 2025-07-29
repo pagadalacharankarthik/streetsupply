@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,8 @@ import {
   Package,
   TrendingUp,
   Filter,
-  Heart
+  Heart,
+  Store
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -19,76 +21,40 @@ const Suppliers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const suppliers = [
-    {
-      id: 1,
-      name: "Krishna Traders",
-      rating: 4.8,
-      location: "Andheri East, Mumbai",
-      phone: "+91 98765 43210",
-      categories: ["Rice", "Pulses", "Grains"],
-      trustScore: 95,
-      deliveryTime: "Same Day",
-      minOrder: "₹500",
-      image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400",
-      featured: true,
-      discount: "5% off on bulk orders"
-    },
-    {
-      id: 2,
-      name: "Sharma Suppliers",
-      rating: 4.6,
-      location: "Karol Bagh, Delhi",
-      phone: "+91 98765 43211",
-      categories: ["Oil", "Spices", "Condiments"],
-      trustScore: 92,
-      deliveryTime: "24 hours",
-      minOrder: "₹300",
-      image: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400",
-      featured: false,
-      discount: null
-    },
-    {
-      id: 3,
-      name: "Fresh Produce Co.",
-      rating: 4.7,
-      location: "Whitefield, Bangalore",
-      phone: "+91 98765 43212",
-      categories: ["Vegetables", "Fruits", "Herbs"],
-      trustScore: 94,
-      deliveryTime: "4-6 hours",
-      minOrder: "₹200",
-      image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400",
-      featured: true,
-      discount: "Free delivery on orders above ₹1000"
-    },
-    {
-      id: 4,
-      name: "Gourmet Grocers",
-      rating: 4.5,
-      location: "Park Street, Kolkata",
-      phone: "+91 98765 43213",
-      categories: ["Dairy", "Meat", "Seafood"],
-      trustScore: 89,
-      deliveryTime: "Same Day",
-      minOrder: "₹400",
-      image: "https://images.unsplash.com/photo-1556909114-4c8cb99e4d3e?w=400",
-      featured: false,
-      discount: null
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
+
+  const fetchSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error: any) {
+      console.error('Error fetching suppliers:', error.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
 
   const categories = ["All", "Rice", "Pulses", "Oil", "Spices", "Vegetables", "Dairy", "Meat"];
   const locations = ["All", "Mumbai", "Delhi", "Bangalore", "Kolkata", "Chennai", "Pune"];
 
   const filteredSuppliers = suppliers.filter(supplier => {
-    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.categories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = supplier.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (supplier.categories || []).some((cat: string) => cat.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || 
-                           supplier.categories.some(cat => cat.toLowerCase() === selectedCategory.toLowerCase());
+                           (supplier.categories || []).some((cat: string) => cat.toLowerCase() === selectedCategory.toLowerCase());
     const matchesLocation = selectedLocation === 'all' ||
-                           supplier.location.toLowerCase().includes(selectedLocation.toLowerCase());
+                           (supplier.city || '').toLowerCase().includes(selectedLocation.toLowerCase());
     
     return matchesSearch && matchesCategory && matchesLocation;
   });
@@ -169,89 +135,111 @@ const Suppliers = () => {
 
       {/* Suppliers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="relative hover:shadow-lg transition-shadow">
-            {supplier.featured && (
-              <Badge className="absolute top-4 left-4 z-10 bg-orange-600">
-                Featured
-              </Badge>
-            )}
-            
-            <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
-              <img 
-                src={supplier.image} 
-                alt={supplier.name}
-                className="w-full h-full object-cover"
-              />
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-              >
-                <Heart className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-semibold text-lg">{supplier.name}</h3>
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-medium">{supplier.rating}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  {supplier.location}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone className="h-4 w-4" />
-                  {supplier.phone}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Package className="h-4 w-4" />
-                  Min Order: {supplier.minOrder}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1 mb-4">
-                {supplier.categories.map((category, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {category}
-                  </Badge>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                <div>
-                  <div className="text-gray-600">Trust Score</div>
-                  <div className="font-medium text-green-600">{supplier.trustScore}%</div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Delivery</div>
-                  <div className="font-medium">{supplier.deliveryTime}</div>
-                </div>
-              </div>
-
-              {supplier.discount && (
-                <div className="bg-green-50 text-green-700 p-2 rounded text-sm mb-4">
-                  🎉 {supplier.discount}
-                </div>
+        {loading ? (
+          <div className="col-span-full text-center py-8">Loading suppliers...</div>
+        ) : filteredSuppliers.length > 0 ? (
+          filteredSuppliers.map((supplier) => (
+            <Card key={supplier.id} className="relative hover:shadow-lg transition-shadow">
+              {supplier.is_featured && (
+                <Badge className="absolute top-4 left-4 z-10 bg-orange-600">
+                  Featured
+                </Badge>
               )}
-
-              <div className="flex gap-2">
-                <Button className="flex-1">
-                  View Products
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Phone className="h-4 w-4" />
+              
+              <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
+                {supplier.image_url ? (
+                  <img 
+                    src={supplier.image_url} 
+                    alt={supplier.business_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-300">
+                    <Store className="h-16 w-16 text-gray-500" />
+                  </div>
+                )}
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                >
+                  <Heart className="h-4 w-4" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-semibold text-lg">{supplier.business_name}</h3>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-sm font-medium">{(supplier.rating || 0).toFixed(1)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4" />
+                    {supplier.city && supplier.state ? `${supplier.city}, ${supplier.state}` : 'Location not specified'}
+                  </div>
+                  {supplier.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="h-4 w-4" />
+                      {supplier.phone}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Package className="h-4 w-4" />
+                    Min Order: ₹{supplier.min_order_amount || 0}
+                  </div>
+                </div>
+
+                {supplier.categories && supplier.categories.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {supplier.categories.map((category: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="text-xs capitalize">
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                  <div>
+                    <div className="text-gray-600">Trust Score</div>
+                    <div className="font-medium text-green-600">{supplier.trust_score || 0}%</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-600">Delivery</div>
+                    <div className="font-medium">{supplier.delivery_time || 'Not specified'}</div>
+                  </div>
+                </div>
+
+                {supplier.discount_text && (
+                  <div className="bg-green-50 text-green-700 p-2 rounded text-sm mb-4">
+                    🎉 {supplier.discount_text}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button className="flex-1">
+                    View Products
+                  </Button>
+                  {supplier.phone && (
+                    <Button variant="outline" size="sm">
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No suppliers found</h3>
+            <p className="text-gray-600">Try adjusting your search filters</p>
+          </div>
+        )}
       </div>
 
       {/* AI Recommendations */}
