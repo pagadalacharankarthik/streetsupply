@@ -52,28 +52,32 @@ const Dashboard = () => {
       }
 
       // Fetch orders (different based on role)
-      const ordersQuery = userRole === 'supplier' 
-        ? supabase
-            .from('orders')
-            .select(`
+      let ordersQuery;
+      if (userRole === 'supplier' && supplierData?.id) {
+        ordersQuery = supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (
               *,
-              order_items (
-                *,
-                products (name, unit, price_per_unit)
-              )
-            `)
-            .eq('supplier_id', supplierData?.id || '')
-        : supabase
-            .from('orders')
-            .select(`
+              products (name, unit, price_per_unit)
+            ),
+            profiles!orders_vendor_id_fkey (name, email)
+          `)
+          .eq('supplier_id', supplierData.id);
+      } else {
+        ordersQuery = supabase
+          .from('orders')
+          .select(`
+            *,
+            suppliers (business_name),
+            order_items (
               *,
-              suppliers (business_name),
-              order_items (
-                *,
-                products (name, unit, price_per_unit)
-              )
-            `)
-            .eq('vendor_id', user.id);
+              products (name, unit, price_per_unit)
+            )
+          `)
+          .eq('vendor_id', user.id);
+      }
 
       const { data: ordersData, error: ordersError } = await ordersQuery;
 

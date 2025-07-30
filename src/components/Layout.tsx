@@ -29,21 +29,21 @@ export function Layout({ children }: LayoutProps) {
         <AppSidebar />
         
         <div className="flex-1 flex flex-col">
-          <header className="h-14 flex items-center justify-between border-b bg-white px-4">
+          <header className="h-14 flex items-center justify-between border-b bg-white px-4 sticky top-0 z-40">
             <SidebarTrigger />
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               {(user.user_metadata?.role || 'vendor') === 'vendor' && <Cart />}
-              <div className="flex items-center gap-2 text-sm">
+              <div className="hidden sm:flex items-center gap-2 text-sm">
                 <User className="h-4 w-4" />
-                <span>{user.user_metadata?.name || user.email}</span>
+                <span className="hidden md:inline">{user.user_metadata?.name || user.email}</span>
                 <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
                   {user.user_metadata?.role || 'vendor'}
                 </span>
               </div>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+                <LogOut className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Sign Out</span>
               </Button>
             </div>
           </header>

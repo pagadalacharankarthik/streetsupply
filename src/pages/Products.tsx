@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Package, Edit, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -26,6 +26,7 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
@@ -205,6 +206,7 @@ const Products = () => {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => navigate(`/products/edit/${product.id}`)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

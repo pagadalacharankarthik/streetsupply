@@ -13,6 +13,8 @@ import Suppliers from "./pages/Suppliers";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
 import Products from "./pages/Products";
+import ProductDetails from "./pages/ProductDetails";
+import ProductEditForm from "./components/ProductEditForm";
 import SupplierProducts from "./pages/SupplierProducts";
 import SupplierForm from "./components/SupplierForm";
 import ProductForm from "./components/ProductForm";
@@ -44,6 +46,8 @@ function AppRoutes() {
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+      <Route path="/products/:id" element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
+      <Route path="/products/edit/:id" element={<ProtectedRoute><ProductEditForm /></ProtectedRoute>} />
       <Route path="/supplier-setup" element={<ProtectedRoute><SupplierForm /></ProtectedRoute>} />
       <Route path="/add-product" element={<ProtectedRoute><ProductForm /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

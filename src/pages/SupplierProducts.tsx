@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ interface Supplier {
 
 const SupplierProducts = () => {
   const { supplierId } = useParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -233,13 +234,22 @@ const SupplierProducts = () => {
                     </div>
                   </div>
                   
-                  <Button 
-                    onClick={() => handleAddToCart(product)}
-                    className="w-full gap-2"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    Add to Cart - ₹{((quantities[product.id] || product.minimum_quantity) * product.price_per_unit).toFixed(2)}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(`/products/${product.id}`)}
+                      className="flex-1"
+                    >
+                      View Details
+                    </Button>
+                    <Button 
+                      onClick={() => handleAddToCart(product)}
+                      className="flex-1 gap-1"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      Add ₹{((quantities[product.id] || product.minimum_quantity) * product.price_per_unit).toFixed(0)}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
