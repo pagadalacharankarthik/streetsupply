@@ -72,31 +72,31 @@ It enables vendors to manage supplies with confidence, transparency, and speed.
 ## 🧪 Getting Started (Local Setup)
 
 ```bash
-# 1. Clone the repo
+1. Clone the repo
 git clone https://github.com/pagadalacharankarthik/streetsupply.git
 cd streetsupply
 
-# 2. Install dependencies
+2. Install dependencies
 npm install
 
-# 3. Set environment variables
-# Rename `.env.example` to `.env` and add your Supabase project keys
+3. Set environment variables
+Rename `.env.example` to `.env` and add your Supabase project keys
 
-# 4. Start the app
+4. Start the app
 npm run dev
 
 ---
 
 ##🚀 Features Roadmap
-#📱 Mobile app (React Native)
+📱 Mobile app (React Native)
 
-# Inventory alert system
+Inventory alert system
 
-#💬 WhatsApp chatbot integration
+💬 WhatsApp chatbot integration
 
-#📊 AI-based demand forecasting
+📊 AI-based demand forecasting
 
-#🧾 Digital invoices and payment integration
+🧾 Digital invoices and payment integration
 
 ---
 
