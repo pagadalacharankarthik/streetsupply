@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Cart } from "@/components/Cart";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,6 +33,7 @@ export function Layout({ children }: LayoutProps) {
             <SidebarTrigger />
             
             <div className="flex items-center gap-4">
+              {(user.user_metadata?.role || 'vendor') === 'vendor' && <Cart />}
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4" />
                 <span>{user.user_metadata?.name || user.email}</span>

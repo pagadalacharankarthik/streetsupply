@@ -16,6 +16,7 @@ import {
   Store
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Link } from 'react-router-dom';
 
 const Suppliers = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -221,8 +222,10 @@ const Suppliers = () => {
                 )}
 
                 <div className="flex gap-2">
-                  <Button className="flex-1">
-                    View Products
+                  <Button className="flex-1" asChild>
+                    <Link to={`/supplier/${supplier.id}/products`}>
+                      View Products
+                    </Link>
                   </Button>
                   {supplier.phone && (
                     <Button variant="outline" size="sm">

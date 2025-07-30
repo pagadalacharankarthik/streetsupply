@@ -34,20 +34,17 @@ export function AppSidebar() {
   const userRole = user?.user_metadata?.role || 'vendor';
 
   const vendorItems = [
-    { title: "Dashboard", url: "/", icon: BarChart3 },
+    { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
     { title: "Browse Suppliers", url: "/suppliers", icon: Store },
     { title: "My Orders", url: "/orders", icon: ShoppingCart },
-    { title: "Group Orders", url: "/group-orders", icon: Users },
-    { title: "Reviews", url: "/reviews", icon: Star },
     { title: "Profile", url: "/profile", icon: Settings },
   ];
 
   const supplierItems = [
-    { title: "Dashboard", url: "/", icon: BarChart3 },
+    { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
     { title: "My Products", url: "/products", icon: Package },
     { title: "Orders", url: "/orders", icon: ShoppingCart },
     { title: "Add Product", url: "/add-product", icon: Plus },
-    { title: "Analytics", url: "/analytics", icon: BarChart3 },
     { title: "Profile", url: "/profile", icon: Settings },
   ];
 
