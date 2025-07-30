@@ -94,21 +94,21 @@ npm install
 # 4. Start the app
 npm run dev
 
-🚀 Features Roadmap
-📱 Mobile app (React Native)
+##🚀 Features Roadmap
+#📱 Mobile app (React Native)
 
-🔔 Inventory alert system
+# Inventory alert system
 
-💬 WhatsApp chatbot integration
+#💬 WhatsApp chatbot integration
 
-📊 AI-based demand forecasting
+#📊 AI-based demand forecasting
 
-🧾 Digital invoices and payment integration
+#🧾 Digital invoices and payment integration
 
-👤 Author
+##👤 Author
 Pagadala Charan Karthik
 GitHub: @pagadalacharankarthik
 
-📄 License
+##📄 License
 MIT License – free to use and modify with credit.
 
