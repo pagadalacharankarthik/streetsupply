@@ -87,10 +87,10 @@ npm run dev
 
 ---
 
-##🚀 Features Roadmap
+🚀 Features Roadmap
 📱 Mobile app (React Native)
 
-Inventory alert system
+🔔 Inventory alert system
 
 💬 WhatsApp chatbot integration
 
@@ -98,14 +98,10 @@ Inventory alert system
 
 🧾 Digital invoices and payment integration
 
----
-
-##👤 Author
+👤 Author
 Pagadala Charan Karthik
 GitHub: @pagadalacharankarthik
 
----
-
-##📄 License
+📄 License
 MIT License – free to use and modify with credit.
 
