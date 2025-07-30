@@ -69,15 +69,6 @@ It enables vendors to manage supplies with confidence, transparency, and speed.
 
 ---
 
-## 📸 Screenshots
-
-> Add screenshots here:
-- Vendor dashboard
-- Supplier list
-- Order creation page
-
----
-
 ## 🧪 Getting Started (Local Setup)
 
 ```bash
@@ -94,6 +85,8 @@ npm install
 # 4. Start the app
 npm run dev
 
+---
+
 ##🚀 Features Roadmap
 #📱 Mobile app (React Native)
 
@@ -105,9 +98,13 @@ npm run dev
 
 #🧾 Digital invoices and payment integration
 
+---
+
 ##👤 Author
 Pagadala Charan Karthik
 GitHub: @pagadalacharankarthik
+
+---
 
 ##📄 License
 MIT License – free to use and modify with credit.
