@@ -17,9 +17,11 @@ import {
   Eye
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 const Orders = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,8 @@ const Orders = () => {
               order_items (
                 *,
                 products (name, unit, price_per_unit)
-              )
+              ),
+              profiles!orders_vendor_id_fkey (name, email)
             `)
             .eq('supplier_id', supplierData.id);
         }
@@ -112,9 +115,42 @@ const Orders = () => {
     )
   );
 
+  const updateOrderStatus = async (orderId: string, newStatus: 'pending' | 'processing' | 'in_transit' | 'delivered' | 'cancelled') => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+
+      toast({
+        title: "Success",
+        description: `Order status updated to ${newStatus.replace('_', ' ')}`,
+      });
+    } catch (error: any) {
+      console.error('Error updating order status:', error);
+    }
+  };
+
   const OrderCard = ({ order }: { order: any }) => {
     const userRole = user?.user_metadata?.role || 'vendor';
     const displayStatus = order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ');
+    
+    const getNextStatus = (currentStatus: string): 'pending' | 'processing' | 'in_transit' | 'delivered' | 'cancelled' | null => {
+      switch (currentStatus) {
+        case 'pending': return 'processing';
+        case 'processing': return 'in_transit';
+        case 'in_transit': return 'delivered';
+        default: return null;
+      }
+    };
+
+    const nextStatus = getNextStatus(order.status);
     
     return (
       <Card className="mb-4">
@@ -123,7 +159,10 @@ const Orders = () => {
             <div>
               <h3 className="font-semibold text-lg">{order.order_number}</h3>
               <p className="text-gray-600">
-                {userRole === 'supplier' ? 'Customer Order' : order.suppliers?.business_name || 'Unknown Supplier'}
+                {userRole === 'supplier' 
+                  ? order.profiles?.name || order.profiles?.email || 'Customer Order'
+                  : order.suppliers?.business_name || 'Unknown Supplier'
+                }
               </p>
             </div>
             <Badge className={`flex items-center gap-1 ${getStatusColor(order.status)}`}>
@@ -169,11 +208,24 @@ const Orders = () => {
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm">
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
+            
+            {/* Supplier-specific actions */}
+            {userRole === 'supplier' && nextStatus && (
+              <Button 
+                size="sm" 
+                onClick={() => updateOrderStatus(order.id, nextStatus)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Mark as {nextStatus.replace('_', ' ')}
+              </Button>
+            )}
+            
+            {/* Common actions */}
             {order.status !== 'cancelled' && (
               <>
                 <Button variant="outline" size="sm">
@@ -186,6 +238,7 @@ const Orders = () => {
                 </Button>
               </>
             )}
+            
             {order.status === 'delivered' && !order.rating && (
               <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
                 Rate Order
@@ -205,7 +258,7 @@ const Orders = () => {
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
           <p className="text-gray-600 mt-1">Track and manage your orders</p>
         </div>
-        <Button>
+        <Button onClick={() => window.location.href = '/suppliers'}>
           Place New Order
         </Button>
       </div>
@@ -266,7 +319,7 @@ const Orders = () => {
                 <p className="text-gray-600 mb-4">
                   {searchTerm ? 'Try adjusting your search terms' : 'You haven\'t placed any orders yet'}
                 </p>
-                <Button>Browse Suppliers</Button>
+                <Button onClick={() => window.location.href = '/suppliers'}>Browse Suppliers</Button>
               </CardContent>
             </Card>
           )}

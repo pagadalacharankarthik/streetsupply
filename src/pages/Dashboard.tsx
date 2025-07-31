@@ -53,18 +53,34 @@ const Dashboard = () => {
 
       // Fetch orders (different based on role)
       let ordersQuery;
-      if (userRole === 'supplier' && supplierData?.id) {
-        ordersQuery = supabase
-          .from('orders')
-          .select(`
-            *,
-            order_items (
+      if (userRole === 'supplier') {
+        // First get supplier data if not available
+        if (!supplierData) {
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (supplier) {
+            setSupplierData(supplier);
+          }
+        }
+
+        const supplierId = supplierData?.id || null;
+        if (supplierId) {
+          ordersQuery = supabase
+            .from('orders')
+            .select(`
               *,
-              products (name, unit, price_per_unit)
-            ),
-            profiles!orders_vendor_id_fkey (name, email)
-          `)
-          .eq('supplier_id', supplierData.id);
+              order_items (
+                *,
+                products (name, unit, price_per_unit)
+              ),
+              profiles!orders_vendor_id_fkey (name, email)
+            `)
+            .eq('supplier_id', supplierId);
+        }
       } else {
         ordersQuery = supabase
           .from('orders')
@@ -79,10 +95,12 @@ const Dashboard = () => {
           .eq('vendor_id', user.id);
       }
 
-      const { data: ordersData, error: ordersError } = await ordersQuery;
+      if (ordersQuery) {
+        const { data: ordersData, error: ordersError } = await ordersQuery;
 
-      if (!ordersError) {
-        setOrders(ordersData || []);
+        if (!ordersError) {
+          setOrders(ordersData || []);
+        }
       }
     } catch (error: any) {
       toast.error('Error loading dashboard data: ' + error.message);

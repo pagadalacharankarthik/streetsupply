@@ -34,7 +34,7 @@ export function Layout({ children }: LayoutProps) {
             
             <div className="flex items-center gap-2 md:gap-4">
               {(user.user_metadata?.role || 'vendor') === 'vendor' && <Cart />}
-              <div className="hidden sm:flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4" />
                 <span className="hidden md:inline">{user.user_metadata?.name || user.email}</span>
                 <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
